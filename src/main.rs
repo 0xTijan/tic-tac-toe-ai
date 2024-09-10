@@ -1,4 +1,5 @@
 use rand::Rng;
+use std::io;
 
 #[derive(Copy, Clone, Debug)]
 #[derive(PartialEq)]
@@ -12,21 +13,27 @@ type Board = [[FieldData; 3]; 3];
 
 fn main() {
     let mut board: Board = [[FieldData::None; 3]; 3];
-    display_board(&board);
     let mut player_on_move: FieldData = get_first_player();
-    
+    display_board(&board);
+
     // while loop - until win or draw
     while is_game_active(&board) {
         if player_on_move == FieldData::X {
             // user is on the move ask for input and update board - keep asking until getting legal move
-
+            let field_num = get_user_move(&board);
+            println!("You chose field: {}.", field_num + 1);
+            board = update_board(&board, field_num, &player_on_move);
             player_on_move = FieldData::O;
         } else {
             // bot is on the move (select random legal place)  
-            generate_bot_move(&board);
+            let field_num = generate_bot_move(&board);
+            println!("Bot chose field: {}.", field_num + 1);
+            board = update_board(&board, field_num, &player_on_move);
             player_on_move = FieldData::X;
         }
-        // update board
+
+        // display board
+        display_board(&board);
     }
 
     // congratulate winner (if there is one)
@@ -38,10 +45,49 @@ fn main() {
     };
 }
 
-fn generate_bot_move(board: &Board) -> i32 {
+fn update_board(board: &Board, field_num: usize, player: &FieldData) -> Board {
+    let mut new_board = *board;
+    new_board[field_num / 3][field_num % 3] = *player;
+    return new_board;
+}
+
+fn get_user_move(board: &Board) -> usize {
+    loop {
+        println!("Your turn. Enter a number:");
+        let mut input = String::new();
+
+        // Read the input from the user
+        io::stdin()
+            .read_line(&mut input)
+            .expect("Failed to read input");
+
+        // Attempt to parse the input as a number
+        let number: Result<usize, _> = input.trim().parse();
+
+        match number {
+            Ok(n) => {
+                match is_legal_move(&board, n-1) {
+                    Err(_) => println!("The field must be empty."), // If move is illegal, print error and continue loop
+                    Ok(_) => return n-1, // If move is legal, return the number and break the loop
+                }
+            }
+            Err(_) => {
+                println!("Invalid number, please try again.");
+            }
+        }
+    }
+}
+
+fn generate_bot_move(board: &Board) -> usize {
     // random number 0-8
+    let mut rng = rand::thread_rng();
+    let field_num = rng.gen_range(0..9) as usize;
+
     // check if legal, if not repeat, else return
-    1
+    match is_legal_move(&board, field_num) {
+        Err(_) => generate_bot_move(&board), // If move is illegal, try again recursively
+        Ok(_) => field_num // If move is legal, return the number
+    }
 }
 
 fn is_legal_move(board: &Board, field_num: usize) -> Result<bool, &str> {
@@ -71,7 +117,7 @@ fn is_game_active(board: &Board) -> bool {
     // check if all fields are taken
     let is_full = are_fields_full(&board);
 
-    return (!is_full && !is_there_winner);
+    return !is_full && !is_there_winner;
 }
 
 fn are_fields_full(board: &Board) -> bool {
@@ -123,8 +169,8 @@ fn display_board(board: &Board) {
         println!(
             "| {} | {} | {} |",
             display_field_value(&row[0], &(1+(&index*3))),
-            display_field_value(&row[0], &(2+(&index*3))),
-            display_field_value(&row[0], &(3+(&index*3)))
+            display_field_value(&row[1], &(2+(&index*3))),
+            display_field_value(&row[2], &(3+(&index*3)))
         );
         if index == 2 {
             println!("-------------");
