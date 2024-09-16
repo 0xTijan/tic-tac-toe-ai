@@ -1,4 +1,5 @@
 mod minimax;
+mod mcts;
 
 use rand::Rng;
 use std::io;
@@ -12,16 +13,20 @@ pub enum FieldData {
     None
 }
 
+#[derive(Copy, Clone, Debug, PartialEq)]
+
 enum GameType {
     Random,
     Minimax,
-    MCTS
+    MCTS,
+    PVP
 }
 
 impl GameType {
     // Function to map a number to the GameType
     fn from_number(number: i32) -> Option<GameType> {
         match number {
+            0 => Some(GameType::PVP),
             1 => Some(GameType::Random),
             2 => Some(GameType::Minimax),
             3 => Some(GameType::MCTS),
@@ -35,20 +40,20 @@ type Board = [[FieldData; 3]; 3];
 fn main() {
     let game_type = read_game_type();
     let mut board: Board = [[FieldData::None; 3]; 3];
-    let mut player_on_move: FieldData = get_first_player();
+    let mut player_on_move: FieldData = get_first_player(&game_type);
     display_board(&board);
 
     // while loop - until win or draw
     while is_game_active(&board) {
         if player_on_move == FieldData::X {
             // user is on the move ask for input and update board - keep asking until getting legal move
-            let field_num = get_user_move(&board);
+            let field_num = get_user_move(&board, &player_on_move);
             println!("You chose field: {}.", field_num + 1);
             board = update_board(&board, field_num, &player_on_move);
             player_on_move = FieldData::O;
         } else {
             // bot is on the move (select random legal place)  
-            let field_num = generate_bot_move(&mut board, &game_type);
+            let field_num = generate_bot_move(&mut board, &game_type, &player_on_move);
             println!("Bot chose field: {}.", field_num + 1);
             board = update_board(&board, field_num, &player_on_move);
             player_on_move = FieldData::X;
@@ -62,14 +67,15 @@ fn main() {
     let result = check_for_winners(&board);
     match result {
         FieldData::None => println!("Draw!"),
-        FieldData::O => println!("Bot won! You lost!"),
-        FieldData::X => println!("Congratulations you won!")
+        FieldData::O => if game_type == GameType::PVP {println!("Player O won!")} else {println!("Bot won! You lost!")},
+        FieldData::X => if game_type == GameType::PVP {println!("Player X won!")} else {println!("Congratulations you won!")},
     };
 }
 
 fn read_game_type() -> GameType {
     loop {
         println!("Select game type (how you want the bot to play):");
+        println!("0 Multiplayer");
         println!("1 Random (easy)");
         println!("2 Minimax (hard)");
         println!("3 Monte Carlo Tree Search (hard)");
@@ -92,7 +98,7 @@ fn read_game_type() -> GameType {
                         println!("Selected game type: {:?}", n);
                         return t;
                     },
-                    None => println!("Number must be between 1 and 3."),
+                    None => println!("Number must be between 0 and 3."),
                 };
             }
             Err(_) => {
@@ -108,9 +114,9 @@ fn update_board(board: &Board, field_num: usize, player: &FieldData) -> Board {
     return new_board;
 }
 
-fn get_user_move(board: &Board) -> usize {
+fn get_user_move(board: &Board, current_player: &FieldData) -> usize {
     loop {
-        println!("Your turn. Enter a number:");
+        println!("Your {:?} turn. Enter a number:", current_player);
         let mut input = String::new();
 
         // Read the input from the user
@@ -135,7 +141,7 @@ fn get_user_move(board: &Board) -> usize {
     }
 }
 
-fn generate_bot_move(board: &mut Board, game_type: &GameType) -> usize {
+fn generate_bot_move(board: &mut Board, game_type: &GameType, current_player: &FieldData) -> usize {
     match game_type {
         GameType::Random => random_bot_move(board),
         GameType::Minimax => {
@@ -145,7 +151,8 @@ fn generate_bot_move(board: &mut Board, game_type: &GameType) -> usize {
                 Some(i) => i as usize
             }
         },
-        GameType::MCTS => 1
+        GameType::MCTS => 1,
+        GameType::PVP => get_user_move(board, current_player),
     }
 }
 
@@ -259,14 +266,28 @@ fn display_field_value(value: &FieldData, index: &usize) -> String {
     }
 }
 
-fn get_first_player() -> FieldData{
+fn get_first_player(game_type: &GameType) -> FieldData{
     let mut rng = rand::thread_rng();
     let num: u8 = rng.gen();
-    if num % 2 == 0 {
-        println!("You start. You play X, bot plays O.");
-        FieldData::X
-    } else {
-        println!("Bot starts. You play X, bot plays O.");
-        FieldData::O
+    let first_player = if num % 2 == 0 { FieldData::X } else { FieldData::O };
+
+    match game_type {
+        GameType::PVP => {
+            println!(
+                "{} starts.",
+                match first_player {
+                    FieldData::X => "X",
+                    _ => "O",
+                }
+            )
+        },
+        _ => {
+            println!(
+                "{} start. You play X, bot plays O.",
+                if first_player == FieldData::X { "You" } else { "Bot" }
+            )
+        },
     }
+
+    first_player
 }
