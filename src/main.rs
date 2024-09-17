@@ -223,7 +223,8 @@ pub fn check_for_winners(board: &Board) -> FieldData {
     for (index, &field) in board[0].iter().enumerate() {
         if 
             &board[0][index] == &board[1][index] &&
-            &board[2][index] == &board[1][index]
+            &board[2][index] == &board[1][index] &&
+            &board[0][index] != &FieldData::None
         {
             winner = field;
         }
