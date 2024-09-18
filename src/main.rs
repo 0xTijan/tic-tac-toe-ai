@@ -13,6 +13,16 @@ pub enum FieldData {
     None
 }
 
+impl FieldData {
+    // function that gets the opponent
+    pub fn get_opponent(current_player: &FieldData) -> FieldData {
+        match current_player {
+            FieldData::O => FieldData::X,
+            _ => FieldData::O
+        }
+    }
+}
+
 #[derive(Copy, Clone, Debug, PartialEq)]
 
 enum GameType {
@@ -233,7 +243,8 @@ pub fn check_for_winners(board: &Board) -> FieldData {
     // check both diagonals
     if 
         (&board[0][0] == &board[1][1] && &board[2][2] == &board[1][1]) ||
-        (&board[2][0] == &board[1][1] && &board[0][2] == &board[1][1])
+        (&board[2][0] == &board[1][1] && &board[0][2] == &board[1][1]) &&
+        &board[1][1] != &FieldData::None
     {
         winner = board[1][1];
     }
