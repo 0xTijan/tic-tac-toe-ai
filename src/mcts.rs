@@ -7,6 +7,7 @@ use std::rc::Rc;
 use std::cell::RefCell;
 
 
+#[derive(Debug, Clone)]
 struct State {
     board: Board,
     current_player: FieldData,
@@ -25,6 +26,7 @@ impl State {
     }
 }
 
+#[derive(Debug, Clone)]
 struct Node {
     state: State,
     parent: Option<Rc<RefCell<Node>>>,
@@ -45,8 +47,34 @@ impl Node {
         self.children.push(child.clone());  // Add child to the list of children
         child
     }
+
+    fn find_best_ucb_child(&self) -> Rc<RefCell<Node>> {
+        let parent_visit_count = self.state.visits;
+
+        // loop though all child nodes
+        // return the node with the best ucb score
+        self.children
+            .iter()
+            .max_by(|child_a, child_b| {
+                let child_a_ucb = {
+                    let child_a_borrow = child_a.borrow();
+                    calculate_ucb(&parent_visit_count, &child_a_borrow.state.win_score, &child_a_borrow.state.visits)
+                };
+
+                let child_b_ucb = {
+                    let child_b_borrow = child_b.borrow();
+                    calculate_ucb(&parent_visit_count, &child_b_borrow.state.win_score, &child_b_borrow.state.visits)
+                };
+
+                // compare ucb values
+                child_a_ucb.partial_cmp(&child_b_ucb).unwrap()
+            })
+            .unwrap()
+            .clone() // return the child with the highest UCB score
+    }
 }
 
+#[derive(Debug, Clone)]
 struct Tree {
     root: Rc<RefCell<Node>>,
 }
@@ -58,15 +86,29 @@ impl Tree {
             root: root_node,
         }
     }
+
+    fn get_root_node(&self) -> Node {
+        self.root.borrow().clone()
+    }
 }
 
+fn calculate_ucb(parent_visits: &i64, win_score: &i64, node_visits: &i64) -> f64 {
+    if *parent_visits == 0 {
+        f64::MAX
+    } else {
+        // calculate UCB using UCB formula 
+        (*win_score as f64 / *node_visits as f64) + 1.41 * f64::sqrt(f64::ln(*parent_visits as f64) / *node_visits as f64)
+    }
+}
 
 // monte carlo tree search main function
-pub fn mcts(board: &Board, player: FieldData, duration_sec: u64) {
+pub fn mcts(board: &Board, player: FieldData, duration_sec: u64) -> usize {
     let opponent = FieldData::get_opponent(&player);
 
     let state = State::new(*board, player, None, None);
     let tree = Tree::new(state);
+
+    println!("tree {:?}", tree);
 
     let start_time = Instant::now();   // Get the current time (start time)
     let duration = Duration::new(duration_sec, 0);  // Set the duration for duration_sec seconds
@@ -74,9 +116,22 @@ pub fn mcts(board: &Board, player: FieldData, duration_sec: u64) {
     // run MCTS algorithm (repeating all 4 phases) for allowed time
     while Instant::now() - start_time < duration {
         // 1. SELECTION PHASE
+        let selected_node = select_node(tree.get_root_node());
+        
         // 2. EXPANSION PHASE
         // 3. SIMULATION PHASE
         // 4. BACK-PROPAGATION PHASE
     }
+
+    1
 }
 
+fn select_node(root_node: Node) -> Node {
+    if root_node.children.len() == 0 {
+        root_node
+    } else {
+        let res = root_node.find_best_ucb_child();
+        let a = res.borrow();
+        return a.clone();   
+    }
+}

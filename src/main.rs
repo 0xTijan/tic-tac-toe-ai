@@ -1,6 +1,7 @@
 mod minimax;
 mod mcts;
 
+use mcts::mcts;
 use rand::Rng;
 use std::io;
 use minimax::minimax;
@@ -161,7 +162,7 @@ fn generate_bot_move(board: &mut Board, game_type: &GameType, current_player: &F
                 Some(i) => i as usize
             }
         },
-        GameType::MCTS => 1,
+        GameType::MCTS => mcts(board, *current_player, 5),
         GameType::PVP => get_user_move(board, current_player),
     }
 }
