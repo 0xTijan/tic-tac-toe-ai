@@ -304,3 +304,15 @@ fn get_first_player(game_type: &GameType) -> FieldData{
 
     first_player
 }
+
+pub fn find_empty_fields(board: &Board) -> Vec<usize> {
+    let mut available_fields = Vec::new();
+    for (i, row) in board.iter().enumerate() {
+        for (j, field) in row.iter().enumerate() {
+            if *field == FieldData::None {
+                available_fields.push(j+(&i*3));
+            }
+        }
+    }
+    available_fields
+}

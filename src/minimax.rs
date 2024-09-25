@@ -1,5 +1,6 @@
 use crate::FieldData;
 use crate::Board;
+use crate::find_empty_fields;
 use crate::check_for_winners;
 
 // Struct to store minimax results
@@ -93,16 +94,4 @@ pub fn minimax(board: &mut Board, curr_player: &FieldData) -> MinimaxRes {
 
     // println!("W: {:?}", curr_winner);
     return best_test_play;
-}
-
-pub fn find_empty_fields(board: &Board) -> Vec<usize> {
-    let mut available_fields = Vec::new();
-    for (i, row) in board.iter().enumerate() {
-        for (j, field) in row.iter().enumerate() {
-            if *field == FieldData::None {
-                available_fields.push(j+(&i*3));
-            }
-        }
-    }
-    available_fields
 }

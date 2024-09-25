@@ -1,6 +1,8 @@
+use crate::find_empty_fields;
 use crate::FieldData;
 use crate::Board;
 use crate::check_for_winners;
+use std::borrow::BorrowMut;
 use std::time::{Instant, Duration};
 use std::thread::sleep;
 use std::rc::Rc;
@@ -23,6 +25,25 @@ impl State {
             visits: visits.unwrap_or(0),
             win_score: win_score.unwrap_or(0),
         }
+    }
+
+    fn get_all_possible_states(&self) -> Vec<State> {
+        let empty_fields = find_empty_fields(&self.board);
+        let mut states: Vec<State> = Vec::new();
+        
+        for i in empty_fields {
+            let mut board = self.board.clone();
+            board[i / 3][i % 3] = FieldData::get_opponent(&self.current_player);
+
+            states.push(State {
+                board: board,
+                current_player: FieldData::get_opponent(&self.current_player),
+                visits: 0,
+                win_score: 0
+            });
+        }
+
+        states
     }
 }
 
@@ -116,9 +137,12 @@ pub fn mcts(board: &Board, player: FieldData, duration_sec: u64) -> usize {
     // run MCTS algorithm (repeating all 4 phases) for allowed time
     while Instant::now() - start_time < duration {
         // 1. SELECTION PHASE
-        let selected_node = select_node(tree.get_root_node());
-        
+        let mut selected_node = select_node(tree.get_root_node());
+        // println!("Selected node {:?}", selected_node);
+
         // 2. EXPANSION PHASE
+        selected_node = expand_node(selected_node);
+        
         // 3. SIMULATION PHASE
         // 4. BACK-PROPAGATION PHASE
     }
@@ -134,4 +158,15 @@ fn select_node(root_node: Node) -> Node {
         let a = res.borrow();
         return a.clone();   
     }
+}
+
+fn expand_node(mut node: Node) -> Node {
+    let possible_states = node.state.get_all_possible_states();
+    let parent_node = Rc::new(RefCell::new(node.clone()));  // Clone node here to keep a copy
+
+    for state in possible_states {
+        node.add_child(state.clone(), parent_node.clone());
+    }
+
+    return node;
 }
