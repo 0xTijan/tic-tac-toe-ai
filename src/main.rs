@@ -162,12 +162,12 @@ fn generate_bot_move(board: &mut Board, game_type: &GameType, current_player: &F
                 Some(i) => i as usize
             }
         },
-        GameType::MCTS => mcts(board, *current_player, 5),
+        GameType::MCTS => mcts(board, *current_player, 2),
         GameType::PVP => get_user_move(board, current_player),
     }
 }
 
-fn random_bot_move(board: &Board) -> usize {
+pub fn random_bot_move(board: &Board) -> usize {
     // random number 0-8
     let mut rng = rand::thread_rng();
     let field_num = rng.gen_range(0..9) as usize;
