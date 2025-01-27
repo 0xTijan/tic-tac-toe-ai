@@ -162,7 +162,7 @@ fn generate_bot_move(board: &mut Board, game_type: &GameType, current_player: &F
                 Some(i) => i as usize
             }
         },
-        GameType::MCTS => mcts(board, *current_player, 2),
+        GameType::MCTS => random_bot_move(board),   //TODO: Implement MCTS
         GameType::PVP => get_user_move(board, current_player),
     }
 }

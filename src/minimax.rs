@@ -10,8 +10,7 @@ pub struct MinimaxRes {
 }
 
 pub fn minimax(board: &mut Board, curr_player: &FieldData) -> MinimaxRes {
-    // let mut board_array = flatten_2d_board(&board);
-    let empty_fields = find_empty_fields(&board);
+    let empty_fields = find_empty_fields(&board);   // array of ids of empty fields
 
     // check if final state (win, loss, draw) - these return statements will only happen from recursive calls in for loop (not from main call of this function)
     let curr_winner = check_for_winners(&board);
