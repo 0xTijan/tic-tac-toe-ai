@@ -52,6 +52,7 @@ fn main() {
     let game_type = read_game_type();
     let mut board: Board = [[FieldData::None; 3]; 3];
     let mut player_on_move: FieldData = get_first_player(&game_type);
+    let first_player = player_on_move;
     display_board(&board);
 
     // while loop - until win or draw
@@ -64,7 +65,7 @@ fn main() {
             player_on_move = FieldData::O;
         } else {
             // bot is on the move (select random legal place)  
-            let field_num = generate_bot_move(&mut board, &game_type, &player_on_move);
+            let field_num = generate_bot_move(&mut board, &game_type, &player_on_move, &first_player);
             println!("Bot chose field: {}.", field_num + 1);
             board = update_board(&board, field_num, &player_on_move);
             player_on_move = FieldData::X;
@@ -152,7 +153,7 @@ fn get_user_move(board: &Board, current_player: &FieldData) -> usize {
     }
 }
 
-fn generate_bot_move(board: &mut Board, game_type: &GameType, current_player: &FieldData) -> usize {
+fn generate_bot_move(board: &mut Board, game_type: &GameType, current_player: &FieldData, first_player: &FieldData) -> usize {
     match game_type {
         GameType::Random => random_bot_move(board),
         GameType::Minimax => {
@@ -162,7 +163,7 @@ fn generate_bot_move(board: &mut Board, game_type: &GameType, current_player: &F
                 Some(i) => i as usize
             }
         },
-        GameType::MCTS => mcts(board),
+        GameType::MCTS => mcts(board, first_player),
         GameType::PVP => get_user_move(board, current_player),
     }
 }

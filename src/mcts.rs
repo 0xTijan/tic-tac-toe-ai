@@ -1,34 +1,27 @@
-use rand::seq::SliceRandom;
 use crate::check_for_winners;
 use crate::find_empty_fields;
 use crate::random_bot_move;
 use crate::FieldData;
 use crate::Board;
 
-/**
- * formula used:
- * UCB1 = v(i) / n(i) + C * sqrt(ln(N) / n(i))
- * C = 2
- */
 
-const C: f32 = 2.0;
-const LIMIT: i32 = 1000; // change to higher value later
+const C: f32 = 1.414;         // sqrt(2)
+const LIMIT: i32 = 100_000;   // change to higher value later
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 struct Node {
-  parent: Option<usize>,  // id of parent node (None if root node)
-  children: Vec<usize>,   // list ids of children nodes
-  value: i32,             // v(i)
-  visits: i32,            // n(i)
-  state: Board,           // s(i)
-  action: Option<usize>,  // move that vas played
-  id: usize,              // index in tree.nodes
+  parent: Option<usize>,      // id of parent node (None if root node)
+  children: Vec<usize>,       // list ids of children nodes
+  value: i32,                 // v(i)
+  visits: i32,                // n(i)
+  state: Board,               // s(i)
+  action: Option<usize>,      // move that vas played
+  id: usize,                  // index in tree.nodes
 }
 
-#[derive(Debug)]
 struct Tree {
-  nodes: Vec<Node>,      // list of all nodes
-  root: usize,           // id of root node  
+  nodes: Vec<Node>,           // list of all nodes
+  root: usize,                // id of root node  
 }
 
 impl Node {
@@ -77,16 +70,16 @@ impl Tree {
   }
 
   pub fn get_best_action(&self, node_index: usize) -> usize {
-    // return action of node out of node_index's children with best usb score (or value)
+    // return action of node out of node_index's children with best value
     let node_children = &self.nodes[node_index].children;
-    let mut max_ucb = f32::MIN;
+    let mut max_value = i32::MIN;
     let mut index_of_max = node_children[0];
 
     for i in node_children {
-      let ucb = calculate_ucb(*i, &self);
-      if ucb > max_ucb {
+      let _value = self.nodes[*i].value;
+      if _value > max_value {
         index_of_max = *i;
-        max_ucb = ucb;
+        max_value = _value;
       }
     }
 
@@ -99,28 +92,26 @@ impl Tree {
 
 
 // MAIN FUNCTION
-pub fn mcts(board: &mut Board) -> usize {
+pub fn mcts(board: &mut Board, first_player: &FieldData) -> usize {
   // setup tree and initial nodes
   let mut tree = Tree::initialize(Node::new(None, board.clone(), 0, None));
   tree.nodes[tree.root].visits += 1;
 
   // MCTS main loop - run until repetition limit
-  while tree.nodes[tree.root].visits < LIMIT {  // -> real 
-  //let mut i = 0;
-  //while i < 3 {         // used for debug
+  while tree.nodes[tree.root].visits <= LIMIT { 
     // 1. SELECTION PHASE 
     let selected_index = selection(&tree);
 
     if tree.nodes[selected_index].visits == 0 {
       // 3. ROLLOUT - no node expansion
-      let rollout_value = rollout(selected_index, &mut tree);
+      let rollout_value = rollout(selected_index, &mut tree, &first_player);
       // 4. BACK PROPAGATION
       tree.back_propagate(selected_index, rollout_value);
     } else {
       // 2. NODE EXPANSION
-      let selected_new_node_index = node_expansion(selected_index, &mut tree);
+      let selected_new_node_index = node_expansion(selected_index, &mut tree, &first_player);
       // 3. ROLLOUT
-      let rollout_value = rollout(selected_new_node_index, &mut tree);
+      let rollout_value = rollout(selected_new_node_index, &mut tree, &first_player);
       // 4. BACK PROPAGATION
       tree.back_propagate(selected_new_node_index, rollout_value);
     }
@@ -163,7 +154,7 @@ fn _selection(current_index: usize, tree: &Tree) -> usize {
 
 
 // 3. ROLLOUT or simulation
-fn rollout(node_index: usize, tree: &mut Tree) -> i32 {
+fn rollout(node_index: usize, tree: &mut Tree, first_player: &FieldData) -> i32 {
   // get necessary data (state, parent id and empty fields)
   let state = {
     let node = &tree.nodes[node_index];
@@ -173,27 +164,27 @@ fn rollout(node_index: usize, tree: &mut Tree) -> i32 {
   let mut new_state = state.clone();
 
   // simulate random moves
-  for i in 0..empty_fields {
-    let bot_move = random_bot_move(&new_state);
-    let player = if i % 2 == 0 {
-      FieldData::O  // algo plays first
-    } else {
-      FieldData::X  // player plays second
-    };
-    new_state[bot_move / 3][bot_move % 3] = player
+  for _i in 0..empty_fields {
+    if check_for_winners(&new_state) != FieldData::None {
+      // stop rollout if game has ended
+      break;
+    }
+    let player = check_who_plays(&new_state, first_player);
+    let bot_move = generate_optimal_move(&new_state, &player);    // both players play optimally
+    new_state[bot_move / 3][bot_move % 3] = player;
   }
 
   // return value (result of simulation)
   return match check_for_winners(&new_state) {
-    FieldData::None => 0, // draw
-    FieldData::O => 10,   // algo won
-    FieldData::X => -10,  // human won
+    FieldData::None => 0,   // draw
+    FieldData::O => 1,      // algo won
+    FieldData::X => -2,     // human won
   };
 }
 
 
 // 3. NODE EXPANSION
-fn node_expansion(node_index: usize, tree: &mut Tree) -> usize {
+fn node_expansion(node_index: usize, tree: &mut Tree, first_player: &FieldData) -> usize {
   // get necessary data (state, parent id and empty fields)
   let (parent_id, state) = {
     let node = &tree.nodes[node_index];
@@ -205,7 +196,7 @@ fn node_expansion(node_index: usize, tree: &mut Tree) -> usize {
   // for each empty field add a new node
   for empty_index in empty_fields {
     let mut new_state = state.clone();
-    new_state[empty_index / 3][empty_index % 3] = FieldData::O;
+    new_state[empty_index / 3][empty_index % 3] = check_who_plays(&state, first_player);
     let child_id = tree.nodes.len();
     let new_node = Node::new(Some(parent_id), new_state, child_id, Some(empty_index));
     children_ids.push(child_id);
@@ -213,28 +204,72 @@ fn node_expansion(node_index: usize, tree: &mut Tree) -> usize {
   }
 
   // return random child id
-  *children_ids.choose(&mut rand::thread_rng()).unwrap_or(&node_index)
+  *children_ids.first().unwrap_or(&node_index)
 }
 
 
 // HELPER FUNCTIONS
+// UCB1 = v(i) / n(i) + C * sqrt(ln(N) / n(i))
 fn calculate_ucb(node_index: usize, tree: &Tree) -> f32 {
   let node = &tree.nodes[node_index];
-  let n = node.visits as f32;
-  
-  // no visits UCB is infinite
-  if n == 0.0 {
+  if node.visits == 0 {
+    // insures unvisited nodes are prioritized
     return f32::INFINITY;
   }
-  
-  let v = node.value as f32;
-  let index = match node.parent {
-    None => tree.root,
-    Some(x) => x,
+  let exploitation = node.value as f32 / node.visits as f32;
+  let exploration = C * ( (tree.nodes[tree.root].visits as f32).ln() / node.visits as f32 ).sqrt();
+  exploitation + exploration
+}
+
+fn check_who_plays(state: &Board, first_player: &FieldData) -> FieldData {
+  let (mut o_counter, mut x_counter) = (0, 0);
+
+  for &field in state.iter().flatten() {
+    match field {
+      FieldData::O => o_counter += 1,
+      FieldData::X => x_counter += 1,
+      _ => {}
+    }
+  }
+
+  if o_counter == x_counter {
+    *first_player   // equal counts first player is next
+  } else if x_counter > o_counter {
+    FieldData::O
+  } else {
+    FieldData::X
+  }
+}
+
+fn generate_optimal_move(state: &Board, player: &FieldData) -> usize {
+  let opponent = match player {
+    FieldData::X => FieldData::O,
+    FieldData::O => FieldData::X,
+    _ => FieldData::None
   };
-  
-  let n_parent = tree.nodes[index].visits as f32; // parent node visits
-  
-  let ucb: f32 = (v/n) + C * (n_parent.ln() / n).sqrt();
-  ucb
+
+  // 1. check for immediate win
+  for i in 0..9 {
+    if state[i / 3][i % 3] == FieldData::None {
+      let mut temp = state.clone();
+      temp[i / 3][i % 3] = *player;
+      if check_for_winners(&temp) == *player {
+        return i;
+      }
+    }
+  }
+
+  // 2. block opponents wins
+  for i in 0..9 {
+    if state[i / 3][i % 3] == FieldData::None {
+      let mut temp = state.clone();
+      temp[i / 3][i % 3] = opponent;
+      if check_for_winners(&temp) == opponent {
+        return i;
+      }
+    }
+  }
+
+  // 3. do a random move if no immediate wins
+  random_bot_move(state)
 }
