@@ -1,10 +1,10 @@
 # Rust - Tic Tac Toe
 
-Simple terminal Tic Tac Toe game created in Rust. The game has 4 modes:
-1. Multiplayer (player vs player)
-2. Random (bot plays completely random moves)
-3. Minimax algorithm (bot selects moves using minimax)
-4. Monte Carlo Tree Search algorithm (bot selects moves using MCTS)
+Terminal Tic Tac Toe game created in Rust. The game has 4 modes:
+1. Multiplayer
+2. Random
+3. Minimax
+4. Monte Carlo Tree Search (MCTS)
 
 ## Minimax
 Short explanation of Minimax and how it works.
