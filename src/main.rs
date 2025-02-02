@@ -1,7 +1,7 @@
 mod minimax;
 mod mcts;
 
-use mcts::mcts;
+use mcts::{generate_optimal_move, mcts};
 use rand::Rng;
 use std::io;
 use minimax::minimax;
@@ -39,8 +39,8 @@ impl GameType {
         match number {
             0 => Some(GameType::PVP),
             1 => Some(GameType::Random),
-            2 => Some(GameType::Minimax),
-            3 => Some(GameType::MCTS),
+            2 => Some(GameType::MCTS),
+            3 => Some(GameType::Minimax),
             _ => None, // invalid input
         }
     }
@@ -86,11 +86,12 @@ fn main() {
 
 fn read_game_type() -> GameType {
     loop {
-        println!("Select game type (how you want the bot to play):");
-        println!("0 Multiplayer");
-        println!("1 Random (easy)");
-        println!("2 Minimax (hard)");
-        println!("3 Monte Carlo Tree Search (hard)");
+        println!("Select game type (how you want the bot to play):\n");
+        println!("NUMBER    ALGORITHM                      DIFFICULTY");
+        println!("0         Multiplayer                    -");
+        println!("1         Basic Bot                      easy");
+        println!("2         Monte Carlo Tree Search        hard");
+        println!("3         Minimax                        impossible");
 
         let mut input = String::new();
 
@@ -155,7 +156,7 @@ fn get_user_move(board: &Board, current_player: &FieldData) -> usize {
 
 fn generate_bot_move(board: &mut Board, game_type: &GameType, current_player: &FieldData, first_player: &FieldData) -> usize {
     match game_type {
-        GameType::Random => random_bot_move(board),
+        GameType::Random => generate_optimal_move(board, current_player),
         GameType::Minimax => {
             let res = minimax(board, &FieldData::O);
             match res.index {

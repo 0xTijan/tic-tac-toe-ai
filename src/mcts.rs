@@ -241,7 +241,7 @@ fn check_who_plays(state: &Board, first_player: &FieldData) -> FieldData {
   }
 }
 
-fn generate_optimal_move(state: &Board, player: &FieldData) -> usize {
+pub fn generate_optimal_move(state: &Board, player: &FieldData) -> usize {
   let opponent = match player {
     FieldData::X => FieldData::O,
     FieldData::O => FieldData::X,
